@@ -1,0 +1,48 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Copy project to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_PUBLIC_IP }}
+          username: ${{ secrets.EC2_LOGIN_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "."
+          target: "/home/ubuntu/cad-deploy"
+
+      - name: Build and run container on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_PUBLIC_IP }}
+          username: ${{ secrets.EC2_LOGIN_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            # Confirm Docker exists
+            docker --version
+            sudo systemctl is-active docker || sudo systemctl start docker
+
+            cd /home/ubuntu/cad-deploy
+
+            # Stop and remove old container if it exists
+            sudo docker stop cad-web-runner || true
+            sudo docker rm cad-web-runner || true
+
+            # Build and run new one
+            sudo docker build -t cad-web-image .
+            sudo docker run -d --name cad-web-runner -p 3000:3000 cad-web-image
+
+            # Show status
+            sudo docker ps
