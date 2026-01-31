@@ -2,10 +2,10 @@ FROM node:18-alpine
 
 WORKDIR /usr/src/app
 
-COPY App/package*.json ./
+COPY app/package*.json ./
 RUN npm install --omit=dev
 
-COPY App/ ./
+COPY app/ ./
 
 EXPOSE 3000
 CMD ["npm", "start"]
